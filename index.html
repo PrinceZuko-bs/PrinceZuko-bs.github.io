@@ -219,7 +219,7 @@
                               .style("left", d3.event.pageX - 50 + "px")
                               .style("top", d3.event.pageY - 70 + "px")
                               .style("display", "inline-block")
-                              .html("County: " + json.features[0].properties.value, function(d) { return (d.density); });
+                              .html("County: " + d.properties.CO_NAME + " Density: " + d.properties.value);
                             d3.select("#tooltip")
                                 .select("#pop")
                                 .text(d.density + " Million");
@@ -229,18 +229,6 @@
 			
 			});
 
-//			//Load in GeoJSON data
-//			d3.json("nc-2.json", function(json) {
-//				
-//				//Bind data and create one path per GeoJSON feature
-//				svg.selectAll("path")
-//				   .data(json.features)
-//				   .enter()
-//				   .append("path")
-//				   .attr("d", path)
-//                   .style("fill", "steelblue");
-//		
-//			});
 
   </script>
 </body>
