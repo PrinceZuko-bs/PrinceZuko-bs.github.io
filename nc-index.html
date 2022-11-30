@@ -1,0 +1,247 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>A D3 map using topojson</title>
+<!--
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.19/topojson.min.js"></script>
+-->
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script src="https://d3js.org/topojson.v2.min.js"></script>
+    
+    <link href="http://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet" type="text/css">
+<style>
+    body {
+        padding: 0;
+        margin: 0;
+        background: whitesmoke;
+    }
+    h1 {
+        position: absolute;
+        left: 20px;
+        top: 10px;
+        font-family: "Proxima Nova", Montserrat, sans-serif;
+        font-size: 2em;
+        font-weight: 100;
+        color: #005DAA; /* offical UK Kentucky blue */
+    }
+    .county {
+      stroke: #fff;
+      fill:#005DAA;
+    }
+    .toolTip {
+        position: absolute;
+        display: none;
+        min-width: 80px;
+        height: auto;
+        background: none repeat scroll 0 0 #ffffff;
+        border: 1px solid #6F257F;
+        padding: 14px;
+        text-align: center;
+    }
+    #tooltip.hidden { 
+    display: none;
+    }
+    #tooltip p { 
+        margin: 0;
+        font-family: sans-serif; 
+        font-size: 16px;
+        line-height: 20px;
+    }
+</style>
+</head>
+<body>
+    <h1>North Carolina Counties</h1>
+        <div id="tooltip" class="hidden">
+        <p style="text-align: center;"><strong><span id="country">Important Label Heading</span></strong></p>
+         
+      <div class='grid'>
+        <p class='left'>Population</p>
+        <p class='center'>:</p>
+        <p class='right' id=pop>This is on the right</p>
+      </div>
+        
+      <div class='grid'>
+        <p class='left'>GDP</p>
+        <p class='center'>:</p>
+        <p class='right' id=gdp>This is on the right</p>
+      </div>
+        
+      <div class='grid'>
+        <p class='left'>EPC</p>
+        <p class='center'>:</p>
+        <p class='right' id=epc>This is on the right</p>
+      </div>
+        
+      <div class='grid'>
+        <p class='left'>Total</p>
+        <p class='center'>:</p>
+        <p class='right' id=total>This is on the right</p>
+      </div>
+    
+      </div>
+  <script>
+        
+            var tooltip = d3.select("body").append("div").attr("class", "toolTip");
+  			var w = 1000;
+			var h = 800;
+
+			//Define map projection
+			var projection = d3.geoAlbersUsa()
+							   .translate([(w/2)-1500, (h/2)-250])
+                               .scale([6000]);
+      
+            //Define quantize scale to sort data values into buckets of color
+            var color = d3.scaleThreshold()
+                //.domain([1, 10, 50, 200, 500, 1000, 2000, 4000])
+                .domain([1, 5, 10, 25, 50, 100, 250, 500])
+                .range(d3.schemeOrRd[9]);
+
+			//Define path generator
+			var path = d3.geoPath()
+						 .projection(projection);
+      
+            var x = d3.scaleSqrt()
+                .domain([0, 500])
+                //.domain([0, 4500])
+                .rangeRound([440, 950]);
+
+			//Create SVG element
+			var svg = d3.select("body")
+						.append("svg")
+						.attr("width", w)
+						.attr("height", h);
+      
+        var g = svg.append("g")
+            .attr("class", "key")
+            .attr("transform", "translate(0,40)");
+
+      
+      svg.selectAll("rect")
+          .data(color.range().map(function(d) {
+              d = color.invertExtent(d);
+              if (d[0] == null) d[0] = x.domain()[0];
+              if (d[1] == null) d[1] = x.domain()[1];
+              return d;
+            }))
+          .enter().append("rect")
+            .attr("height", 8)
+            .attr("x", function(d) { return x(d[0]); })
+            .attr("width", function(d) { return x(d[1]) - x(d[0]); })
+            .attr("fill", function(d) { return color(d[0]); });
+      
+      
+    g.append("text")
+        .attr("class", "caption")
+        .attr("x", x.range()[0])
+        .attr("y", -6)
+        .attr("fill", "#000")
+        .attr("text-anchor", "start")
+        .attr("font-weight", "bold")
+        .text("Population per square mile");
+
+    g.call(d3.axisBottom(x)
+        .tickSize(13)
+        .tickValues(color.domain()))
+        .select(".domain")
+        .remove(); 
+      
+      //Load in agriculture data
+			d3.csv("clean-pop-dense.csv", function(data) {
+
+				//Set input domain for color scale
+
+
+				//Load in GeoJSON data
+				d3.json("nc-2.json", function(json) {
+
+					//Merge the ag. data and GeoJSON
+                    console.log(json.features[0].properties.CO_NAME);
+					//Loop through once for each ag. data value
+					for (var i = 0; i < data.length; i++) {
+				
+						//Grab state name
+                        //console.log(data[i].density);
+						var dataState = data[i].county;
+                        //console.log(dataState);
+						
+						//Grab data value, and convert from string to float
+						var dataValue = parseFloat(data[i].density);
+                        //console.log(dataValue);
+				
+						//Find the corresponding state inside the GeoJSON
+						for (var j = 0; j < json.features.length; j++) {
+						
+							var jsonState = json.features[j].properties.CO_NAME;
+                            //console.log(jsonState);
+				
+							if (dataState == jsonState) {
+						
+								//Copy the data value into the JSON
+								json.features[j].properties.value = dataValue;
+                                //console.log("Match!");
+                                //console.log(json.features[j].properties.value);
+								
+								//Stop looking through the JSON
+								break;
+								
+							}
+						}		
+					}
+
+					//Bind data and create one path per GeoJSON feature
+					svg.selectAll("path")
+					   .data(json.features)
+					   .enter()
+					   .append("path")
+					   .attr("d", path)
+					   .attr("fill", function(d) {
+					   		//Get data value
+					   		var value = d.properties.value;
+                            //console.log(value);
+					   		
+					   		if (value) {
+					   			//If value exists…
+                                console.log(value);
+                                console.log(color(value));
+						   		return color(value);
+					   		} else {
+					   			//If value is undefined…
+                                console.log("broken return");
+						   		return "#ccc";
+					   		}
+					   })
+                        .on("mouseover", function(d) {
+                            console.log(json.features[0].properties.value);
+                            tooltip
+                              .style("left", d3.event.pageX - 50 + "px")
+                              .style("top", d3.event.pageY - 70 + "px")
+                              .style("display", "inline-block")
+                              .html("County: " + json.features[0].properties.value, function(d) { return (d.density); });
+                            d3.select("#tooltip")
+                                .select("#pop")
+                                .text(d.density + " Million");
+                    });
+			
+				});
+			
+			});
+
+//			//Load in GeoJSON data
+//			d3.json("nc-2.json", function(json) {
+//				
+//				//Bind data and create one path per GeoJSON feature
+//				svg.selectAll("path")
+//				   .data(json.features)
+//				   .enter()
+//				   .append("path")
+//				   .attr("d", path)
+//                   .style("fill", "steelblue");
+//		
+//			});
+
+  </script>
+</body>
+</html>
